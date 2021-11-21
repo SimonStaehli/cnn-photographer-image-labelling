@@ -11,19 +11,21 @@ Dieses Markdown dient als Dokumentation vom gesamten Code, den ich während der 
 Für diese Mini-Challenge habe ich ein eigenen Datensatz zusammengestellt aus diversen Bilder, welche mit Klassen gelabelt sind.
 Der Datensatz besteht aus ca. 29'000 Bilder und 28 Labels. 1000 Bilder pro Label. Die Daten habe ich von der folgenden Webseite kollektiert: https://500px.com/. Das Ziel ist es nun die Bilder anhand dieser Labels richtig zu labeln. Dies möchte ich anhand eines CNN-Models erreichen. Im Nachfolgenden werde ich verschiedene Modelle, Optimizer, Regularisierungsmethoden vergleichen. Ausserdem werde ich Transfer-Learning anhand eines vortraininerten Neuronalen Netzes verwenden, dass auf einem weitaus grösseren Datensatz vortrainiert wurde, wie z.B. ImageNet.
 
+### Datenqualität
+
+Die Datenqualität und die Ground Truth entspricht den vorhandenen Abstraktion der Nutzer der Webseite. Es kann sein, dass die Klassenunterteilung einen hohen Bias hat, zumal Bilder unterschiedlicher Bildklassen sehr ähnlich aussehen können.
+
+1. Bias durch das Labelling der Nutzer
+2. Bias durch sehr ähnlich aussehende Klassen. z.B. Celebrities und People
+3. Falsch gesetzte Labels
+
+Dies könnte in einem nächsten Schritt umgagngen werden, wenn zum Beispiel die Bildklasse Celebrity mit People kombiniert wird, da eine Unterscheidung selbst für das menschliche Auge schier unmöglich ist.
+
 # Vorbereitung des Datensatzes
 
 ### Generierung Datensatz für Train-Test-Split
 
 Nun werde ich nachfolgend basierend auf meinen gesammelten Daten eine neue Ordnerstruktur generieren, ein Train-Test Split Erstellen und als Dictionary speichern und das Dictionary vorbereiten für das Kopieren der Bilder in einen Neuen Ordner mit Multiprocessing. Die Ordnerstruktur ist nach dem Pre-Processing in zwei separate Subordner _train_ und _test_ aufgeteilt. Diese beinhalten weitere Subordner mit den Labelnamen und deren Bilder. Das ganze habe ich im Verhältnis 0.9 gesplittet.
-
-# Convolutional Neuronal Network
-
-## Theorie
-
-- Filter erklärt anhand Strukturabbild
-- Berechnung der Feature Map Grösse erklärt
-- Gradient der Filterweights
 
 ## Dataloader
 
@@ -36,6 +38,15 @@ Zuerst muss ich einige Preprozessierungsschritte bei der Bearbeitung der Bilder 
 
 Man kann nun sehen, dass alle Bilder die gleiche Grösse haben und ähnlich aussehen. Das Preprocessing mit Pytorch hat funktioniert. 
 Nun werde ich den gleichen Schritt nochmals wiederholen, nur werde ich noch eine Normalisierung des Tensors anfügen.
+
+
+# Convolutional Neuronal Network
+
+## Theorie
+
+- Filter erklärt anhand Strukturabbild
+- Berechnung der Feature Map Grösse erklärt
+- Gradient der Filterweights
 
 ## Implementation von AlexNet
 
