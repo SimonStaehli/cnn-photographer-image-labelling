@@ -4,7 +4,7 @@
 
 ## Einleitung
 
-Dieses Markdown dient als Dokumentation vom gesamten Code, den ich während der Mini-Challenge geschrieben habe. Dabei werde ich einzelne Bestandteile als Bilder hier darstellen und passend erläutern. Dies bietet vor allem den Vorteil, da das Notebook eine sehr grosse Durchlaufzeit benötigt und es so einfacher ist. Für den COde verweise ich innerhalb dieses Markdowns auf das Notebook `del_image_classification.ipynb`.
+Dieses Markdown dient als Dokumentation vom gesamten Code, den ich während der Mini-Challenge geschrieben habe. Dabei werde ich einzelne Bestandteile als Bilder hier darstellen und passend erläutern. Dies bietet vor allem den Vorteil, da das Notebook eine sehr grosse Durchlaufzeit benötigt und es so einfacher ist, Zwischeresultate als Bilder abzuspeichern und in diesem Markdown zu laden. Zur Inspektion des Codes verweise ich innerhalb dieses Markdowns auf das Notebook `del_image_classification.ipynb`.
 
 ## Use-Case
 
@@ -42,19 +42,43 @@ Nun werde ich den gleichen Schritt nochmals wiederholen, nur werde ich noch eine
 
 # Convolutional Neuronal Network
 
-## Theorie
+## Sneak Peek
 
-- Filter erklärt anhand Strukturabbild
-- Berechnung der Feature Map Grösse erklärt
+| ![cnn](src/cnn_architecture.png) | 
+|:--:| 
+| *CNN Netzwerkarchitektur (Quelle: Gurucharan, 2020, upgrad.com)* |
+
+Die CNN-Architektur trägt ihren Namen aufgrund der vorhandenen Konvolutionsschichten, die im vorderen Teil des Netzwerks vorhanden sind, sprich vor den Fully-Connected Layer platziert sind. Die Konvolutionsschichten bestehen aus einer bestimmten Anzahl Filter, die unterschiedliche Weights aufweisen. Diese Filter fahren in vorgegebener Grösse (Kernelsize) und Schrittzahl (Stride) über das Bild und extrahieren so Features, die in sogenannten Feature Maps resultieren. Aufgrund der unterschiedlichen Filtergewichte werden unterschiedliche Bildmerkmale aufgenommen, wie Ecken und Kanten in einem Bild. Die Konvolutinsschichten werden oftmals mit einer nachfolgenden Poolingschicht kombiniert. Die Poolingschichten ziehen aus den Feature Maps jeweils neue Feature und dienen oftmals zur Datenreduktion. Die Poolingschichten werden meistens als Max-Pooling (Maximalwert aus Kernel an bestimmter Position) oder auch als Average-Pooling (Durchschnittswert des Kernels in einer bestimmten Position) definiert.
+
+## Feature Maps
+
+Zur Berechnung der Dimensionalität der Feature Maps ergibt sich die Formel aus [(Li et al., 2017, Slide 61)](http://cs231n.stanford.edu/slides/2017/cs231n_2017_lecture5.pdf):
+
+$$Output Size= \frac{W-F+2P}{S}+1$$
+
+$W$ stellt hier den vorherigen Input dar. Dies kann ein Eingangsbild oder auch eine bereits extrahierte Feature Map sein. Die wird mit der Kernelgrösse $F$ subtrahiert und anschliessend (falls vorhanden) mit einem  Padding $P$ addiert auf beiden Seite, daher $2*P$. Danach wird das Ganze durch den Stride $S$ dividiert und das Resultat mit eins addiert.
+
+
+
+
+
 - Gradient der Filterweights
 
 ## Implementation von AlexNet
 
 ### Architecture
 
-Architecture von ALexnet
+AlexNet war eines der ersten Netzwerke, welches über die Aktivierungsfunktion Re-Lu(Rectifieed Linear Units) und Drop-out zur Regularisierung beinhaltete. Mit _60M_ Parametern war es zu der Zeit eines der grössten Netzwerkarchitekturen [(Karim, 2019)](https://towardsdatascience.com/illustrated-10-cnn-architectures-95d78ace614d#e971)
+
+| ![AlexNet](src/alexnet_architecture.png) | 
+|:--:| 
+| *Netzwerkarchitektur von AlexNet (Quelle: [Aremu on Medium, 2021](https://medium.com/analytics-vidhya/alexnet-a-simple-implementation-using-pytorch-30c14e8b6db2) )* |
+
+Das Netzwerk verfügt über 5 Konvolutionsschichten und drei Max-Pooling Layer. Das angehängte Multi-Layer Perceptron verfügt über die Dimensionen von _4096x4096xN-Klassen_.
 
 ### Code
+
+Die Pytorch Impelementation von AlexNet konnte ich von Aremu [(2021)](https://medium.com/analytics-vidhya/alexnet-a-simple-implementation-using-pytorch-30c14e8b6db2) übernehmen. Der Code der Implementation des Netzwerks in Pytorch sieht wie folgt aus:
 
 ```python
 class AlexNet(nn.Module):
@@ -91,6 +115,38 @@ class AlexNet(nn.Module):
         return x
 ```
 
+## Vergleiche
+
+Den Vergleich diverser Netzwerkarchitekturen könnte man beliebig ausweiten, da es Milliarden von verschiedenen Parameterkonstellationen gibt, die man hier miteinbringen könnte. Ich habe mich spezifisch auf die Implementation von AlexNet fokussiert und deshalb dieses Netzwerk mit zwei Adaptionen neu implementiert. Die Anpassungen für das erste Netzwerk `FlatAlexNet` basiert auch auf AlexNet doch es wurden zwei Konvolutionsschichten entfernt (Reduktion der Netzwerktiefe). Die nächste angepasste Version von AlexNet ist das `NarrowAlexNet` dabei wurde die Netzwerkweite angepasst, in dem die Anzahl der erzeugten Feature Maps reduziert wurde. Der Code der Netzwerke befindet sich im Python-File `networks.py`.
+
+### Wahl der Metriken
+
+Da ich eine ausbalancierte Klassenverteilung habe von den Bildklassen, die ich selbst von der Webseite heruntergeladen habe, habe ich als erste Metrik für den Vergleich `Accuracy` genommen. Accuracy eignet sich aufgrund dieser Klassenbalanciertheit und liefert wahrheitsgetreue Resultate. Als zweite Metrik übernehme ich `Precision`, welche abbildet wieviele meiner Klassenvorhersagen tatsächlich der Wahrheit entsprechen. Dabei wird mit Accuracy die Genauigkeit auf dem gesamten Datensatz angeschaut und Precision fokussiert sich lediglich auf die gemachten Vorhersagen des Modells.
+
+$$\text{Accuracy}=\frac{TP+TN}{TP+TN+FP+FN} $$
+
+Die Accuracy bildet die Gesamtanzahl der richtig Vorhergesagten ins Verhältnis zur Gesamtzahl der Samples. 
+
+$$\text{Macro-Precision}=\frac{\sum^{K}_{k=1} \frac{TP_k}{TP_k+FP_k}}{K}$$
+
+Precision mit einem Macro-Averaging bildet das Verhältnis jeder vorhergesagten Klasse  zur Gesamtzahl der Klassenvorhersage. Danach wird der Durchschnitt über alle Klassen hinweg gebildet. 
+
+Der Fehler der Klassfikation mit Accuracy kann als Binomial Proportianels Konfidenzinterval berechnet werden. Als Signikanzniveau $\alpha$ nehme ich 5% mit $Z=1.96$. Gemäss [Brownlee (2018)](https://machinelearningmastery.com/confidence-intervals-for-machine-learning/) kann der Fehler der Accuracy so berechnet werden:
+
+$$I=Accuracy \pm Z* \sqrt{\frac{Accuracy*(1-Accuracy)}{n}}$$
+
+### Tuning der Optimierungshyperparameter
+
+Die Netzwerke wurden mit Stochastic Gradient Descent (SGD) mit Momentum optimiert und Mini-Batches. Für die optimalen Einstellungen habe ich für die Batches die Anzahl genommen, die gerade für eine gute Auslastung der GPU und auch des Speichers sorgen. Für den Mini-Batch wählte ich eine Grösse von 150 Bildern. Die Wahl der Lernrate und des Momentums machte ich so, dass ich die Optimierungsschritte des Netzwerks als Running Loss bei jedem MB und der Accuracy einer Epoch überwachte. Die Lernrate erhöhte ich sobald ich merkte, wenn sich die Schrittweite des Running Loss nicht merklich reduzierte oder zu stark fluktuierte. Vom Momentum machte ich Gebrauch, wenn ich merkte, dass mögliche Minimas nicht gefunden wurden, sprich die Optmierungskosten plötzlich drastisch anstiegen.
+
+
+
+
+
+
+
+
+
 ### Vorhersagen
 
 ### Vergleich Optimizer
@@ -99,7 +155,7 @@ Den Vergleich der Optimizer überwache ich über den Lernprozess hinweg. Über d
 
 #### SGD
 
-Stochastic Gradient Descent nimmt über jeden Batch hinweg ein Random Sample mit welchem er dann die Gewichte updated. Dies hat den Vorteil, dass die Rechenintesität viel kleiner wird, zu mal bspw. nur ein Sample verarbeitet werden muss. Teilweise werden auch mehrere kleinere Samples genommen (Batches). [(Srinivasan, 2019)](https://towardsdatascience.com/stochastic-gradient-descent-clearly-explained-53d239905d31)
+Stochastic Gradient Descent nimmt über jeden Batch hinweg ein Random Sample mit welchem er dann die Gewichte updated. Dies hat den Vorteil, dass die Rechenintesität viel kleiner wird, zu mal bspw. nur ein Sample verarbeitet werden muss. Teilweise werden auch mehrere kleinere Samples genommen (Batches) [(Srinivasan, 2019)](https://towardsdatascience.com/stochastic-gradient-descent-clearly-explained-53d239905d31).
 
 
 #### Adam
@@ -120,3 +176,10 @@ Stochastic Gradient Descent nimmt über jeden Batch hinweg ein Random Sample mit
 
 https://towardsdatascience.com/stochastic-gradient-descent-clearly-explained-53d239905d31
 
+https://www.upgrad.com/blog/basic-cnn-architecture/
+
+http://cs231n.stanford.edu/slides/2017/cs231n_2017_lecture5.pdf
+
+https://towardsdatascience.com/illustrated-10-cnn-architectures-95d78ace614d#e971
+
+https://medium.com/analytics-vidhya/alexnet-a-simple-implementation-using-pytorch-30c14e8b6db2
