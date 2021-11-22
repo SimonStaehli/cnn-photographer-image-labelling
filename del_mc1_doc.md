@@ -117,8 +117,6 @@ class AlexNet(nn.Module):
 
 ## Vergleiche
 
-Den Vergleich diverser Netzwerkarchitekturen könnte man beliebig ausweiten, da es Milliarden von verschiedenen Parameterkonstellationen gibt, die man hier miteinbringen könnte. Ich habe mich spezifisch auf die Implementation von AlexNet fokussiert und deshalb dieses Netzwerk mit zwei Adaptionen neu implementiert. Die Anpassungen für das erste Netzwerk `FlatAlexNet` basiert auch auf AlexNet doch es wurden zwei Konvolutionsschichten entfernt (Reduktion der Netzwerktiefe). Die nächste angepasste Version von AlexNet ist das `NarrowAlexNet` dabei wurde die Netzwerkweite angepasst, in dem die Anzahl der erzeugten Feature Maps reduziert wurde. Der Code der Netzwerke befindet sich im Python-File `networks.py`.
-
 ### Wahl der Metriken
 
 Da ich eine ausbalancierte Klassenverteilung habe von den Bildklassen, die ich selbst von der Webseite heruntergeladen habe, habe ich als erste Metrik für den Vergleich `Accuracy` genommen. Accuracy eignet sich aufgrund dieser Klassenbalanciertheit und liefert wahrheitsgetreue Resultate. Als zweite Metrik übernehme ich `Precision`, welche abbildet wieviele meiner Klassenvorhersagen tatsächlich der Wahrheit entsprechen. Dabei wird mit Accuracy die Genauigkeit auf dem gesamten Datensatz angeschaut und Precision fokussiert sich lediglich auf die gemachten Vorhersagen des Modells.
@@ -135,15 +133,46 @@ Der Fehler der Klassfikation mit Accuracy kann als Binomial Proportianels Konfid
 
 $$I=Accuracy \pm Z* \sqrt{\frac{Accuracy*(1-Accuracy)}{n}}$$
 
-### Tuning der Optimierungshyperparameter
+Das Konfidenzintervall ist jedoch stark abhängig von der gewählten Samplegrösse. Da ich in meine Datensatz eine grosse Samplegrösse habe in den Trainings, sowie auch in den Testdaten tendiert das Konfidenzintervall dazu sehr klein auszufallen. Deshalb werde ich dies in meinen Vergleichen in den visuellen Darstellungen nicht miteinbeziehen.
+
+### Tuning der Optimierung-Hyperparameter
 
 Die Netzwerke wurden mit Stochastic Gradient Descent (SGD) mit Momentum optimiert und Mini-Batches. Für die optimalen Einstellungen habe ich für die Batches die Anzahl genommen, die gerade für eine gute Auslastung der GPU und auch des Speichers sorgen. Für den Mini-Batch wählte ich eine Grösse von 150 Bildern. Die Wahl der Lernrate und des Momentums machte ich so, dass ich die Optimierungsschritte des Netzwerks als Running Loss bei jedem MB und der Accuracy einer Epoch überwachte. Die Lernrate erhöhte ich sobald ich merkte, wenn sich die Schrittweite des Running Loss nicht merklich reduzierte oder zu stark fluktuierte. Vom Momentum machte ich Gebrauch, wenn ich merkte, dass mögliche Minimas nicht gefunden wurden, sprich die Optmierungskosten plötzlich drastisch anstiegen.
 
 
+### Vergleich von 3 Modellen
+
+Den Vergleich diverser Netzwerkarchitekturen könnte man beliebig ausweiten, da es unendliche Möglichkeiten von verschiedenen Parameterkonstellationen gibt, die man hier miteinbringen könnte. Ich habe mich spezifisch auf die Implementation von `AlexNet` fokussiert und deshalb dieses Netzwerk mit zwei Adaptionen neu implementiert. Die Anpassungen für das erste Netzwerk `FlatAlexNet` basiert auch auf AlexNet doch es wurden zwei Konvolutionsschichten entfernt (Reduktion der Netzwerktiefe). Die nächste angepasste Version von AlexNet ist das `NarrowAlexNet` dabei wurde die Netzwerkweite angepasst, in dem die Anzahl der erzeugten Feature Maps reduziert wurde. Der Code der Netzwerke befindet sich im Python-File `networks.py`.
+
+| ![3 Modelle](src/networks_compared.png) | 
+|:--:| 
+| *Vergleich der Drei Netzwerkarchitekturen* |
+
+Der linke Plot zeigt die Kostenfunktion über die Batch-Iteratinen hinweg aller drei angewendeten Netzwerke dargestellt als rollender Mittelwert, aufgrund der starken Fluktuationen. Natürlich fällt hier ein Direktvergleich schwer, weil die Hyperparameter für der Verlauf der Kostenfunktion stark abhängig ist von der Wahl der Hyperparameter für die Optimierung. Die Grafik zeigt, dass das `FlatAlexNet` mit geringerer Tiefe den am schnellsten sinkenden Loss zeigt. `AlexNet und FlatAlexNet` fitten das Trainingset besser als das `NarrowAlexNet` was am Schluss sehen schön in der Grafik sehen kann. Aus dieser Grafik kann ich für die Optimierung auf den Datensatz schliessen, dass mit mehr generierten Feature Maps die Daten besser gefittet werden können. Deshalb macht es sinn eine breite Netzwerkarchitekture zu verwenden. Wenn man nun `AlexNet und FlatAlexNet` genauer betrachtet, dann kann man sehen, dass das FlatAlexNet den Datensatz viel schneller fitted als AlexNet, was wahrscheinlich an der kleineren Anzahl der zu optimierenden Parameter und dessen zugrundeliegender Hyperebene liegt. Beide Netzwerke fitten die Daten sehr gut.
+Der zweite Plot der Accuracy auf den Trainings -und den Testdaten wiederspiegeln eine ähnliches Muster. Jedoch hätte ich durch das Overfitten des Trainingsdatensatzes einen höhere Varianz erwartet auf den Testdaten erwartet, als mit dem Modell, das den Datensatz nicht so präzise gefittet hat. Auf diesem Datensatz macht dies wahrscheinlich nicht sehr viel aus, da die einzelnen Bildklassen allgemein einen hohen Bias vorweisen, weil die Bildklassen darin leicht vertauschbar sind.
+
+Nun erhaschen wir eine Blick auf die jeweilige Standardabweichung welches über ein Fenster von jeweils 50 Iterationen genommen wurde, sowie beim vorherigen Plot.
+
+| ![3 Modelle std](src/networks_compared_std.png) | 
+|:--:| 
+| *Vergleich der Drei Netzwerkarchitekturen über Batches hinweg anhand der Standardabweichung* |
+
+Die Grafik zeigt die Streuung der einzelnen Kostenfunktionsmesswerte mit einem Smoothing Average von 50 Iterationen. Es bildet ein ähnliches Resultat ab, wie der Mittelwert über 50 Iterationen hinweg von der vorhergehenden Grafik. Man kann sehen, das im Bereich 1000-3000 eine sehr starke Streuung im sinne der Standardabweichung vorherrscht. Dieser Verlauf wird auch bestärkt durch die batchweise Anpassung der Gradienten. Es kann auch angenommen werden, dasss bei allen drei Modellen an diesen Punkten starke Potentialunterschiede in der darunterliegenden Hyperebene vorzufinden waren. Die Potentialunterschiede werden von AlexNet und FlatAlexNet im späteren Verlauf gut angenommen.
 
 
+### FlatAlexNet
+
+| ![flatnet loss](src/FlatAlexNet_loss.png) | 
+|:--:| 
+| *Kostenfunktion von AlexNet über Batches hinweg* |
+
+| ![flatnet conf mat](src/FlatAlexNet_confmat.png) | 
+|:--:| 
+| *Confusion Matrix aus Vorhersagen auf dem Testset* |
 
 
+- Plotten einer einzelnen Kostenfunktion um SGD aufzuzeigen
+- Plotten der Confusion Matrix und Interpretation.
 
 
 
