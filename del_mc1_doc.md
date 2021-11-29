@@ -115,8 +115,6 @@ class AlexNet(nn.Module):
         return x
 ```
 
-## Vergleiche
-
 ### Wahl der Metriken
 
 Da ich eine ausbalancierte Klassenverteilung habe von den Bildklassen, die ich selbst von der Webseite heruntergeladen habe, habe ich als erste Metrik für den Vergleich `Accuracy` genommen. Accuracy eignet sich aufgrund dieser Klassenbalanciertheit und liefert wahrheitsgetreue Resultate. Als zweite Metrik übernehme ich `Precision`, welche abbildet wieviele meiner Klassenvorhersagen tatsächlich der Wahrheit entsprechen. Dabei wird mit Accuracy die Genauigkeit auf dem gesamten Datensatz angeschaut und Precision fokussiert sich lediglich auf die gemachten Vorhersagen des Modells.
@@ -129,13 +127,14 @@ $$\text{Macro-Precision}=\frac{\sum^{K}_{k=1} \frac{TP_k}{TP_k+FP_k}}{K}$$
 
 Precision mit einem Macro-Averaging bildet das Verhältnis jeder vorhergesagten Klasse  zur Gesamtzahl der Klassenvorhersage. Danach wird der Durchschnitt über alle Klassen hinweg gebildet. 
 
-Der Fehler der Klassfikation mit Accuracy kann als Binomial Proportianels Konfidenzinterval berechnet werden. Als Signikanzniveau $\alpha$ nehme ich 5% mit $Z=1.96$. Gemäss [Brownlee (2018)](https://machinelearningmastery.com/confidence-intervals-for-machine-learning/) kann der Fehler der Accuracy so berechnet werden:
+### Fehler der Metriken
 
-$$I=Accuracy \pm Z* \sqrt{\frac{Accuracy*(1-Accuracy)}{n}}$$
 
-Das Konfidenzintervall ist jedoch stark abhängig von der gewählten Samplegrösse. Da ich in meine Datensatz eine grosse Samplegrösse habe in den Trainings, sowie auch in den Testdaten tendiert das Konfidenzintervall dazu sehr klein auszufallen. Deshalb werde ich dies in meinen Vergleichen in den visuellen Darstellungen nicht miteinbeziehen.
+| ![error estimation](src/error_estimation_metrics.png) | 
+|:--:| 
+| *Vergleich der Drei Netzwerkarchitekturen* |
 
-### Tuning der Optimierung-Hyperparameter
+## Hyperparameter-Tuning
 
 Die Netzwerke wurden mit Stochastic Gradient Descent (SGD) mit Momentum optimiert und Mini-Batches. Für die optimalen Einstellungen habe ich für die Batches die Anzahl genommen, die gerade für eine gute Auslastung der GPU und auch des Speichers sorgen. Für den Mini-Batch wählte ich eine Grösse von 150 Bildern. Die Wahl der Lernrate und des Momentums machte ich so, dass ich die Optimierungsschritte des Netzwerks als Running Loss bei jedem MB und der Accuracy einer Epoch überwachte. Die Lernrate erhöhte ich sobald ich merkte, wenn sich die Schrittweite des Running Loss nicht merklich reduzierte oder zu stark fluktuierte. Vom Momentum machte ich Gebrauch, wenn ich merkte, dass mögliche Minimas nicht gefunden wurden, sprich die Optmierungskosten plötzlich drastisch anstiegen.
 
@@ -166,13 +165,26 @@ Die Grafik zeigt die Streuung der einzelnen Kostenfunktionsmesswerte mit einem S
 |:--:| 
 | *Kostenfunktion von AlexNet über Batches hinweg* |
 
+Der Plot zeigt den Verlauf der Kostenfunktion über alle Batches hinweg vom `FlatAlexNet`. Man kann sehen, dass die Gradienten erst ca. ab 1000 Batches die Kostenfunktion merklich reduzieren. Danach pendelt sich der Verlauf auf einem tiefen Niveau nahe 0 ein. Aufgrund der Batches ist es schwer die Abbruchbedingung zu erfüllen, da die Kostenfunktion durch die Mini-Batches stark varriieren kann und deshalb das Abnahmekriterium $\epsilon$ schwerer zu erreichen ist.
+
 | ![flatnet conf mat](src/FlatAlexNet_confmat.png) | 
 |:--:| 
 | *Confusion Matrix aus Vorhersagen auf dem Testset* |
 
+Der Plot zeigt die Confusions-Matrix respektive die Vorhergesagten Labels gegenübergestellt mit der Ground Truth. Das Bild zeigt, dass sich die meisten Labels bereits auf der Diagonalen befinden und somit als `TP` angenommen werden. Interessant sind doch vor allem die Labels, die vom Modell nicht gut getroffen werden: _Commercial, Family, Fine Art, Journalism, Nature, Street und Travel_. Die Bildklassen _BW, Macro, Night, Animals und Underwater_ werden am besten vom Modell getroffen. Anhand der vorliegenden Matrix kann man interpretieren, wo die grössten Verwechslungen vorliegen. Die Verwechslungen liegen, wie angenommen, in vielen Bildklassen vor, in welchem vorwiegend Menschen darin vorkommen und schwer zu unterscheiden sind: Celebtrities, People, Fashion, Family. Solche Bildklassen wären auch für einen Menschen schwer zu unterscheiden. Ausserdem sieht man auch starke Fehler zwischen Landscape und Travel, Nature und Macro, Food und Still Life, Transportation mit Street und Sport. Gerade beim letzten ist eine Verwechslung von Transportation gut vorstellbar, da in beiden Fotos viele Autos und sonstige Fahrzeuge zu sehen sind. Bei der Verwechslung von Transportation mit Sport jedoch ist dies weniger der Fall, ausser es gäbe womöglich Bilder die Motorsport zeigen. Tatsächlich existieren in den Trainingsdaten viele Bilder, die Motorsport zeigen, wie DirtBikes oder auch Autos, die natürlich leicht verwechselbar mit Bildern aus Transportation sind.
+Eine Möglichkeit wäre die schwer unterscheidbaren Klassen miteinander zu in eine Klasse zu verschmelzen. Diese würde am Modell helfen eine bessere Unterscheidung zu machen. Ich denke, dass auch mit noch mehr Bildern pro Bildklasse es dennoch schwer wäre gute Vorhersagen für diese gut verwechselbaren Klassen zu machen.
 
-- Plotten einer einzelnen Kostenfunktion um SGD aufzuzeigen
-- Plotten der Confusion Matrix und Interpretation.
+### Optimierung des Strides
+
+| ![Optimization Strides](src/FlatAlexNet_strides.png) | 
+|:--:| 
+| *Vergleich der Drei Netzwerkarchitekturen* |
+
+
+### Optimierung der Filtergrössen
+
+
+
 
 
 
