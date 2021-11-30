@@ -129,10 +129,12 @@ Precision mit einem Macro-Averaging bildet das Verhältnis jeder vorhergesagten 
 
 ### Fehler der Metriken
 
-
 | ![error estimation](src/error_estimation_metrics.png) | 
 |:--:| 
 | *Vergleich der Drei Netzwerkarchitekturen* |
+
+Der Plot zeigt den Fehler den Metriken über 10 separate Splits hinweg. Da ich aufgrund der Rechenintensität dies nicht bei jedem Fitten des Modells machen kann, habe ich dies einmal symbolisch für jeden Fit dargestellt. Der Plot auf der linken Seite zeigt den Fehler auf dem Trainingsset. Man kann sehen, dass nach N-Epochen das Trainingsset nicht 100% gefittet wurde. Der IQR beläuft sich bei beiden Metriken auf ca. 0.5 %. Bei beiden Messungen gab es einen Ausreisser, welcher vermutlich auf den gleichen Fold zurückzuführen ist und deutet auf eine Instabilität hin. Dies kann durchaus sein, weil imho die Bildinhalte pro Klasse stark streuen und ich nicht sehr viele Bilder habe.
+Bei dem rechten Plot sieht man den Fehler über 10-folds auf dem Testset. Hier ist das Resultat beider Metriken viel kleiner, was verständlich ist. Was man hier feststellen kann, dass die Streuung z.B. dargestellt durch IQR oder die Whisker viel grösser ist als auf den Trainingsdaten. Die Messungen pro Fold reichen bei der Accuracy von etwas weniger als 21.5% bis auf 24%. Das Resultat lässt sich mit der These, dass sich die Bilder innerhalb einer Klasse stark unterscheiden und auch klassenübergreifend sehr ähnlich auussehen können vereinbaren.
 
 ## Hyperparameter-Tuning
 
@@ -176,10 +178,23 @@ Eine Möglichkeit wäre die schwer unterscheidbaren Klassen miteinander zu in ei
 
 ### Optimierung des Strides
 
+Bei der Optimierung des Strides ging ich so vor, dass ich basierend auf dem vorherigen besten Modell, dem FlatAlexNet eine Veränderung der Strides durchgeführt habe in dem ich für ein Modell die Werte der Strides höher gesetzt habe als für das andere. Dies resultierte in den Netzwerken: `FlatAlexNetHS, FlatAlexNetLS`. Mit den Strides kann man die Menge an Features kontrollieren, die unter den Konvolutionsschichten weitergegeben werden, bis sie anschliessend in den FC Layer gegeben werden. Der Stride definiert die Schrittzahl die mit einem Kernelfilter gemacht werden. Das Resultat sah so aus:
+
 | ![Optimization Strides](src/FlatAlexNet_strides.png) | 
 |:--:| 
-| *Vergleich der Drei Netzwerkarchitekturen* |
+| *Netzwerkarchitekturen mit unterschiedlichen Strides* |
 
+Bei dem Verlauf der Kostenfunktion kann man erkennen, das die Lernrate bei den bei den angepassten Modellen noch nicht gut angepasst war. Dies ist vor allem bei dem Netzwerk mit dem erhöhten Stride ersichtlich. Auch wenn die Anpassung des Netzwerks am längsten gedauert hat, lieferte mir die Variante mit dem erhöhten Stride die besten Resultate mit 23% Accuracy auf dem Testset. Besonders auch hier zu erwähnen, dass beide Varianten bessere Resultate lieferten als das zuvor definierte `FlatAlexNet`. Im weiteren Prozess werde ich mit der Netzwerkarchitektur von `FlatAlexNet` weiterfahren. Im weiteren Verlauf werde ich auch die Optimierungsparameter enstprechend anpassen, sodass am Ende das Trainingsset besser gefittet werden kann.
+
+### Optimierung der Kernel
+
+Bei dieser Optimierung gings um die Dimensionierung der Filter, die zur Feature Extraktion über das Bild gefahren werden. Hier habe ich zwei Implementationen erstellt, die ich mir so ausgerechnet hatte. Eine Implementaton verfügt über grösser Filter und die nächste über kleinere Filter.
+
+| ![Optimization Kernel](src/FlatAlexNet_kernel.png) | 
+|:--:| 
+| *Netzwerkarchitekturen mit unterschiedlichen Kernel Sizes* |
+
+Die Kostenfunktion sank bei der IMplementation mit den kleinsten Kernelgrössen `FlatAlexNetLowKernel` am schnellsten, obwohl diese Implementation über mehr Parameter verfügte, als die beiden anderen Varianten. Dieses Modell lieferte auch die besten Vorhersageresultate und war ca. 1% besser als der Vorgänger `FlatAlexNetHS`. Aus diesen Resultaten schliesse ich nun für meinen Datensatz, dass höhere Strides mit kleineren Filtern bessere Resultate liefert, als andere Konstellationen. Natürlich müsste man hier noch alle anderen Kombinationen testen, doch hier beschränke ich mich inkrementell ein immer besser werdendes Modell zu erhalten.
 
 ### Optimierung der Filtergrössen
 
