@@ -1,152 +1,17 @@
 import optuna
-import sys
-import os
-import shutil
-import numpy as np
-from tqdm import tqdm
-import PIL
-from PIL import Image
-import pandas as pd
 import pickle
-
-from multiprocess import Pool
-from helper import *
 
 import torch
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
 from torch.utils.data import DataLoader
-from torchvision.transforms.functional import to_pil_image
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from sklearn.metrics import accuracy_score, precision_score
+from utility import train_network, calculate_metrics
 
-
-
-def train_network(model, criterion, optimizer, n_epochs, dataloader_train):
-    """
-    Trains a neural Network with given inputs and parameters.
-    
-    params:
-    ---------
-    model: 
-        Neural Network class Pytorch     
-    criterion: 
-        Cost-Function used for the network optimizatio
-    optimizer: 
-        Optmizer for the network
-    n_epochs: 
-        Defines how many times the whole dateset should be fed through the network
-    dataloader_train: 
-        Dataloader with the batched dataset
-    acc_at_iter: 
-        Defines at which iter the acc. should be calculated in each batch.
-        
-    returns:
-    ----------
-    model:
-        trained model
-    losses:
-        Losses over each iteration  
-    accuracy:
-        Accuracy score on trainset at acc_at_iter iteration
-    """
-    y_pred, y_true = torch.Tensor(), torch.Tensor()
-    losses, accuracy = [], {}
-    dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model.to(dev)
-    criterion.to(dev)
-
-    model.train()
-    train_acc = 0
-    for epoch in range(n_epochs):  # loop over the dataset multiple times
-        running_loss = 0.0
-        with tqdm(total=len(dataloader_train)) as pbar:
-            for i, data in enumerate(dataloader_train):
-                # get the inputs; data is a list of [inputs, labels]
-                inputs, labels = data
-                inputs, labels = inputs.to(dev), labels.to(dev)
-
-                # zero the parameter gradients
-                optimizer.zero_grad()
-
-                # forward + backward + optimize
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
-                loss.backward()
-                optimizer.step()
-
-                # calc and print stats
-                losses.append(loss.item())
-                running_loss += loss.item()
-                y_pred = torch.cat((y_pred, outputs.max(dim=1).indices.cpu()))
-                y_true = torch.cat((y_true, labels.cpu()))
-                
-                pbar.update(1)
-                pbar.set_description(f'Epoch: {epoch+1} // Running Loss: {np.round(running_loss, 3)} // Accuracy: {train_acc} ')
-        train_acc = torch.sum(y_pred == y_true) / y_true.shape[0]
-        train_acc = np.round(train_acc.item(), 3)
-        accuracy[len(y_pred)] = train_acc
-                
-    return model, losses, accuracy
-
-
-# Calculate Acc on Train set
-def calculate_metrics(model, dl_train, dl_test):
-    """
-    Calculates Train Accuracy and Test Accuracy
-    
-    params:
-    --------
-    model: torch.model
-        Trained Pytorch Model
-    
-    dl_train: torch.Dataloader
-        Batch Dataloader of Pytorch for Trainingset
-    
-    dl_test: torch.Dataloader
-        Batch Dataloader of Pytorch for Testset
-        
-    return:
-    ---------
-    (train_acc, test_acc): tuple
-        Training and Test Accuracy
-    """
-    dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model.eval()
-    with torch.no_grad():
-        y_pred_train = []
-        y_true_train = []
-        for batch in tqdm(dl_train, desc='Calculate Acc. on Train Data'):
-            images, labels = batch
-            images, labels = images.to(dev), labels.to(dev)
-            outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            y_pred_train = np.append(y_pred_train, predicted.cpu().numpy())
-            y_true_train = np.append(y_true_train, labels.cpu().numpy())
-
-    # On testset
-    with torch.no_grad():
-        y_pred = []
-        y_true = []
-        for batch in tqdm(dl_test, desc='Calculate Acc. on Test Data'):
-            images, labels = batch
-            images, labels = images.to(dev), labels.to(dev)
-            outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            y_pred = np.append(y_pred, predicted.cpu().numpy())
-            y_true = np.append(y_true, labels.cpu().numpy())
-            
-    train_acc = accuracy_score(y_true=y_true_train, y_pred=y_pred_train)
-    test_acc = accuracy_score(y_true=y_true, y_pred=y_pred)
-    train_prec = precision_score(y_true=y_true_train, y_pred=y_pred_train, average='macro')
-    test_prec = precision_score(y_true=y_true, y_pred=y_pred, average='macro')
-        
-    return dict(accuracy=[train_acc, test_acc], precision=[train_prec, test_prec])
-
-
+# Objective Function to Optmize
 def objective(trial):
         
     class TestNet(nn.Module):
@@ -220,7 +85,7 @@ def objective(trial):
     optimizer_ = optim.SGD(model.parameters(), lr=.004, momentum=.95)
     dtype = torch.float32
     model, loss, acc = train_network(model=model, criterion=criterion_, 
-                                     optimizer = optimizer_,
+                                     optimizer=optimizer_,
                                      dataloader_train=dataloader_train, n_epochs=35)
     metrics = calculate_metrics(model=model, dl_train=dataloader_train, dl_test=dataloader_test)
         
