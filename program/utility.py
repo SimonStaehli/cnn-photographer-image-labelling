@@ -15,27 +15,29 @@ def print_total_params(model):
     print(50 * '=')
 
 
-def train_network(model, criterion, optimizer, n_epochs, dataloader_train):
+def train_network(model, criterion, optimizer, n_epochs, dataloader_train,
+                  epsilon=None):
     """
     Trains a neural Network with given inputs and parameters.
 
     params:
-    ---------------
+    ---------
     model:
         Neural Network class Pytorch
     criterion:
-        Cost-Function used for the network optimization
+        Cost-Function used for the network optimizatio
     optimizer:
         Optmizer for the network
     n_epochs:
         Defines how many times the whole dateset should be fed through the network
     dataloader_train:
         Dataloader with the batched dataset
-    acc_at_iter:
-        Defines at which iter the acc. should be calculated in each batch.
+    epsilon: int
+        Stop criterion for Running Loss. If this param should be taken into
+        account then n_epochs needs to be set higher
 
     returns:
-    ---------------
+    ----------
     model:
         trained model
     losses:
@@ -51,9 +53,10 @@ def train_network(model, criterion, optimizer, n_epochs, dataloader_train):
 
     model.train()
     train_acc = 0
-    for epoch in range(n_epochs):  # loop over the dataset multiple times
-        running_loss = 0.0
-        with tqdm(total=len(dataloader_train)) as pbar:
+    overall_length = np.sum([len(batch) for batch in dataloader_train])
+    with tqdm(total=overall_length) as pbar:
+        for epoch in range(n_epochs):  # loop over the dataset multiple times
+            running_loss = 0.0
             for i, data in enumerate(dataloader_train):
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
@@ -73,16 +76,17 @@ def train_network(model, criterion, optimizer, n_epochs, dataloader_train):
                 running_loss += loss.item()
                 y_pred = torch.cat((y_pred, outputs.max(dim=1).indices.cpu()))
                 y_true = torch.cat((y_true, labels.cpu()))
-
-                pbar.update(1)
                 pbar.set_description(
                     f'Epoch: {epoch + 1} // Running Loss: {np.round(running_loss, 3)} // Accuracy: {train_acc} ')
-        train_acc = torch.sum(y_pred == y_true) / y_true.shape[0]
-        train_acc = np.round(train_acc.item(), 3)
-        accuracy[len(y_pred)] = train_acc
+            if epsilon:
+                if running_loss < epsilon:
+                    break
+            pbar.update(1)
+            train_acc = torch.sum(y_pred == y_true) / y_true.shape[0]
+            train_acc = np.round(train_acc.item(), 3)
+            accuracy[len(y_pred)] = train_acc
 
     return model, losses, accuracy
-
 
 def predict_on_testset(model, dataloader_test):
     """
@@ -182,11 +186,14 @@ def plot_confusion_matrix(y_true, y_pred):
 
     plt.show()
 
+
+
 def train_network_kfold(model, train_data: 'ImageFolder-Obj', test_data: 'ImageFolder-Obj',
-                        criterion, optimizer, n_epochs, k_folds=10, batch_sizes=150):
+                        criterion, optimizer, n_epochs, k_folds=10, batch_sizes=150, epsilon=None):
     """
     Wrapper Function for K-Fold Cross-Validation.
     """
+
     def reset_weights(m):
         if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
             m.reset_parameters()
@@ -196,7 +203,7 @@ def train_network_kfold(model, train_data: 'ImageFolder-Obj', test_data: 'ImageF
 
     metrics = {}
     for fold, (train_idx, test_idx) in enumerate(kfold.split(data)):
-        print('{} Fold {} {}'.format(2 0 *'=', fold, 2 0 *'='))
+        print('{} Fold {} {}'.format(20 * '=', fold, 20 * '='))
         train_subsampler = torch.utils.data.SubsetRandomSampler(train_idx)
         test_subsampler = torch.utils.data.SubsetRandomSampler(test_idx)
 
@@ -209,7 +216,7 @@ def train_network_kfold(model, train_data: 'ImageFolder-Obj', test_data: 'ImageF
 
         # Model Training
         model, _, _ = train_network(model=model, criterion=criterion, optimizer=optimizer, n_epochs=n_epochs,
-                                    dataloader_train=trainloader)
+                                    dataloader_train=trainloader, epsilon=epsilon)
         # Calculation of metrics
         print('Calculating Metrics ...')
         metrics[fold] = calculate_metrics(model=model, dl_train=trainloader, dl_test=testloader)
