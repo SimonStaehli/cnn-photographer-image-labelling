@@ -58,12 +58,6 @@ $$Output Size= \frac{W-F+2P}{S}+1$$
 
 $W$ stellt hier den vorherigen Input dar. Dies kann ein Eingangsbild oder auch eine bereits extrahierte Feature Map sein. Die wird mit der Kernelgrösse $F$ subtrahiert und anschliessend (falls vorhanden) mit einem  Padding $P$ addiert auf beiden Seite, daher $2*P$. Danach wird das Ganze durch den Stride $S$ dividiert und das Resultat mit eins addiert.
 
-
-
-
-
-- Gradient der Filterweights
-
 ## Implementation von AlexNet
 
 ### Architecture
@@ -131,10 +125,10 @@ Precision mit einem Macro-Averaging bildet das Verhältnis jeder vorhergesagten 
 
 | ![error estimation](src/error_estimation_metrics.png) | 
 |:--:| 
-| *Vergleich der Drei Netzwerkarchitekturen* |
+| *Vergleich der Drei Netzwerkarchitekturen (10 Folds)* |
 
-Der Plot zeigt den Fehler den Metriken über 10 separate Splits hinweg. Da ich aufgrund der Rechenintensität dies nicht bei jedem Fitten des Modells machen kann, habe ich dies einmal symbolisch für jeden Fit dargestellt. Der Plot auf der linken Seite zeigt den Fehler auf dem Trainingsset. Man kann sehen, dass nach N-Epochen das Trainingsset nicht 100% gefittet wurde. Der IQR beläuft sich bei beiden Metriken auf ca. 0.5 %. Bei beiden Messungen gab es einen Ausreisser, welcher vermutlich auf den gleichen Fold zurückzuführen ist und deutet auf eine Instabilität hin. Dies kann durchaus sein, weil imho die Bildinhalte pro Klasse stark streuen und ich nicht sehr viele Bilder habe.
-Bei dem rechten Plot sieht man den Fehler über 10-folds auf dem Testset. Hier ist das Resultat beider Metriken viel kleiner, was verständlich ist. Was man hier feststellen kann, dass die Streuung z.B. dargestellt durch IQR oder die Whisker viel grösser ist als auf den Trainingsdaten. Die Messungen pro Fold reichen bei der Accuracy von etwas weniger als 21.5% bis auf 24%. Das Resultat lässt sich mit der These, dass sich die Bilder innerhalb einer Klasse stark unterscheiden und auch klassenübergreifend sehr ähnlich auussehen können vereinbaren.
+Der Plot zeigt den Fehler den Metriken über 10 separate Splits hinweg. Da ich aufgrund der Rechenintensität dies nicht bei jedem Fitten des Modells machen kann, habe ich dies einmal symbolisch für jeden Fit dargestellt. Der Plot auf der linken Seite zeigt den Fehler auf dem Trainingsset. Man kann sehen, dass nach N-Epochen das Trainingsset nicht 100% gefittet wurde. Der IQR beläuft sich bei beiden Metriken auf ca. 0.5%. Bei beiden Messungen gab es einen Ausreisser, welcher vermutlich auf den gleichen Fold zurückzuführen ist und deutet auf eine Instabilität hin. Dies kann durchaus sein, weil imho die Bildinhalte pro Klasse stark streuen und ich nicht sehr viele Bilder habe.
+Bei dem rechten Plot sieht man den Fehler über 10-folds auf dem Testset. Hier ist das Resultat beider Metriken viel kleiner, was verständlich ist. Was man hier feststellen kann, dass die Streuung z.B. dargestellt durch IQR oder die Whisker viel grösser ist als auf den Trainingsdaten. Die Messungen pro Fold reichen bei der Accuracy von etwas weniger als 21.5% bis auf 24%. Das Resultat lässt sich mit der These, dass sich die Bilder innerhalb einer Klasse stark unterscheiden und auch klassenübergreifend sehr ähnlich auussehen können, vereinbaren. Diese Streuung deutet auf ein eher unrobustes Modell hin.
 
 ## Hyperparameter-Tuning
 
@@ -186,7 +180,7 @@ Bei der Optimierung des Strides ging ich so vor, dass ich basierend auf dem vorh
 
 Bei dem Verlauf der Kostenfunktion kann man erkennen, das die Lernrate bei den bei den angepassten Modellen noch nicht gut angepasst war. Dies ist vor allem bei dem Netzwerk mit dem erhöhten Stride ersichtlich. Auch wenn die Anpassung des Netzwerks am längsten gedauert hat, lieferte mir die Variante mit dem erhöhten Stride die besten Resultate mit 23% Accuracy auf dem Testset. Besonders auch hier zu erwähnen, dass beide Varianten bessere Resultate lieferten als das zuvor definierte `FlatAlexNet`. Im weiteren Prozess werde ich mit der Netzwerkarchitektur von `FlatAlexNet` weiterfahren. Im weiteren Verlauf werde ich auch die Optimierungsparameter enstprechend anpassen, sodass am Ende das Trainingsset besser gefittet werden kann.
 
-### Optimierung der Kernel
+### Optimierung der Filtergrössen
 
 Bei dieser Optimierung gings um die Dimensionierung der Filter, die zur Feature Extraktion über das Bild gefahren werden. Hier habe ich zwei Implementationen erstellt, die ich mir so ausgerechnet hatte. Eine Implementaton verfügt über grösser Filter und die nächste über kleinere Filter.
 
@@ -196,10 +190,75 @@ Bei dieser Optimierung gings um die Dimensionierung der Filter, die zur Feature 
 
 Die Kostenfunktion sank bei der IMplementation mit den kleinsten Kernelgrössen `FlatAlexNetLowKernel` am schnellsten, obwohl diese Implementation über mehr Parameter verfügte, als die beiden anderen Varianten. Dieses Modell lieferte auch die besten Vorhersageresultate und war ca. 1% besser als der Vorgänger `FlatAlexNetHS`. Aus diesen Resultaten schliesse ich nun für meinen Datensatz, dass höhere Strides mit kleineren Filtern bessere Resultate liefert, als andere Konstellationen. Natürlich müsste man hier noch alle anderen Kombinationen testen, doch hier beschränke ich mich inkrementell ein immer besser werdendes Modell zu erhalten.
 
-### Optimierung der Filtergrössen
+### Optimierung des MLP-Layers
+
+Nun werde ich noch den Fully-Connected Layer optimieren. Die Optimierung werde ich anhand des Hyperparameter-Tuning Frameworks `optuna` vornehmen [(Akiba et al., 2019)](https://optuna.org/#paper). Mit diesem Framework variiere ich die Anzahl der Layer und die Anzahl der Neuronen in den Layer des MLP's. Durch das zeitaufwendige Training führte ich 20 Versuche durch, die zur Optimierung des beitrugen. Die Optimierung resultierte in einem Netzwerk mit 4 Hidden Layern mit den Grössen 
+```python
+MLP = {'n_layers': 3, 'fc1': 2379, 'fc2': 5592, 'fc3': 7864}
+```
+Die Güte des Modells pro Optimierungsiteration habe ich über die Metrik Accuracy bestimmt. Durch die Optimierung konnte ich eine Accuracy von ca. 25% erreichen. Der Fehler der Metrik sieht so aus:
+
+| ![Error FlatAlexNetOpt](src/error_estimation_optimized.png) | 
+|:--:| 
+| *Schätzung des Fehelrs des optimierten Netzwerk (5 Folds)* |
+
+Ein Vergleich mit der oberen Grafik ist schwer, da hier eine andere Anzahl an Folds verwendet wurde im Gegensatz zur oberen Grafik. Die Scores auf dem Traniingset sind sehr nahe aufeinander, was auf die gleiche Anzahl der verwendeten Epochen zurückzuführen ist. Die Grafik auf der rechten Seite zeigt die Metriken auf, die pro gefittetem Fold verwendet wurden. Es ist anzunehmen, dass der Schätzfehler grösser wird, wenn die Trainingsdaten kleiner sind wie in unserem Fall. Jedoch musste ich weniger Iterationen vornehmen, weil das Training sehr lange gedauert hat. Da sich die Trainingsset unterscheiden fällt ein Vergleich der Lagemasse schwer aus. Im Vergleich zum Fehler der ersten Schätzung (siehe Kapitel _Schätzung des Fehlers_) kann man sehen, dass die Accuracy nun robuster geworden ist anhand des Streumasses IQR und der Whisker. Dies sieht bei der Precision anders aus, da wurde die Streuung grösser. Ingesamt würde ich die Streuung von diesem Modell nicht als gut beurteilen und daraus schliessen, dass das Modell immer noch nicht robust genug ist.
+
+## Regularisierung
+
+Regularisierung hilft einem Modell overfitting auf den Trainingsdaten zu vermeiden und so eine bessere Übertragbarkeit des Trainierten Modells auf die Testdaten abzubilden.
+
+### L1/L2 Regularisierung
+
+Bei der L1 Regularisierung und später auch der L2-Regularisierung wird der Kostenfunktion ein weiterer Additionsterm angehängt. Dies stelle ich vereinfacht dargestellt so dar:
+
+$$J_{L1}(\theta)= \epsilon(y, \hat{y}) + \lambda \sum |\theta|$$
+
+Durch dieses anhängenden des weiteren Terms wird eine weitere Bedingung zur Optimierung des Modells und zur Berechnung der Gradienten beigefügt. Im Falle der L1-Regulariserung wäre es die Summe aller absoluten Beträge, welche im Falle der Ableitung der angehängte L1-Term zu $\frac{\partial f_{L1}(\theta)}{\partial \theta} = \lambda sign(\theta)$ wird. Die Funktion $sing(x)$ gibt als Rückgabe 1, falls x positiv, 0 falls x 0 und -1 falls x negativ ist zurück. Die Gewichtung wird mit dem Hyperparameter $\lambda$ gesteuert. Die Kostenfunktion wird durch die Gewichtung grosser $\theta$ bestraft, was in der Optimerung in Betracht gezogen wird. Eine Besonderheit dieser Regularisierung ist, dass die Gewichte 0 werden können, wobei dies bei L2 anders ist. 
+
+$$J_{L2}(\theta)= \epsilon(y, \hat{y}) + \lambda \sum \theta^2$$
+
+Bei der L2-Regularisierung wird ein anderer Term an die Kostenfunktion gehängt. Der Term summiert alle quadrierten $\theta$ auf. Auch hier kann die Stärke der Regularisierung mit $\lambda$ bestimmt werden. Im Falle der Berechnung der Gradienten sieht es bei der L2-Regularisierung wie folgt aus: $\frac{\partial f_{L2}(\theta)}{\partial \theta} = 2\lambda \theta$. Diese Regularisierungstechnik bestraft grosse Gewichte noch stärker aufgrund des quadratischen Terms.
+
+### Dropout
+
+| ![dropout vs no dropout](src/dropout_vs_nodropout.png) | 
+|:--:| 
+| *Dropout verbildlicht (Quelle: Dropout: A simple Way to Prevent Overfitting, Srivasan et al., 2014)* |
 
 
+"The key idea is to randomly drop units (along with their connections) from the neural
+network during training. This prevents units from co-adapting too much [(Srivastava et al.,2014)](https://jmlr.org/papers/volume15/srivastava14a/srivastava14a.pdf).
+Nach dieser Beschreibung dropped man hier ganze Units sprich eine ganze Achse eines Weight Layers, um Gleichanpassungen der Neuronen im Netzwerk zu vermeiden. Durch das Droppen kann das Overfitting vermieden und auch die Trainingszeit verschnellert werden. Die Randomness wird aus der Bernoulliverteilung gezogen mit der bestimmt wird, ob man ein Neuron behält oder Dropped. Wichtig zu wissen ist, dass das Dropout nur für eine Epoche gilt. Danach werden die gedroppten Neuronen wieder beigefügt.
 
+### Anwendung
+
+Für mein Netzwerk werde ich Dropout verwenden, um ein potentielles Overfitting zu vermeiden. Nach [Srivastava et al.(2014)](https://jmlr.org/papers/volume15/srivastava14a/srivastava14a.pdf) soll Dropout gute Resultate geliefert haben bei CNNs. Ausserdem reduziert diese Methode die Anzahl der Parameter und hilft das Netzwerk schneller zu trainieren. Anhand des Wahrscheinlichkeitsparameter $p$ kann die Drop-Out Wahrscheinlichkeit festgelegt werden.
+
+| ![Dropout Regularization](src/dropout_regularization.png) | 
+|:--:| 
+| *Effekt des Dropouts auf Kostenfunktion* |
+
+Der Plot zeigt die Entwicklung des Losses über Batches hinweg für verschiedene p-Werte, die als Hyperparameter für den Dropout beitrugen. Wie auch bei anderen Regularisierungstechniken kann man sehen, dass durch eine erhöhte Dropout-Wahrscheinlichkeit stärker regularisiert wird, sprich ein Overfitting vermieden auf den Testdaten vermieden wird. Desto höher der p-Wert, desto höher die Wahrscheinlichkeit, dass ein Neuron während einer Iteration ausgelassen wird. Ich denke ein Vorteil dabei ist es, dass nicht alle Neuronen in einer Iteration ein Update erhalten, wie anderen, was dazu führt, dass eine grössere Unabhängigkeit der einzelnen Updates zwischen Weights vorherrscht. In meinem jetzigen Beispiel würde gemäss dem Plot einen __P-Value von < 0.25__ für mein Modell einsetzen. Ich denke doch, dass in Bezug auf meinen Datensatz eine Regularisierung nicht stark verbessert.
+
+
+## Batch-Normalisierung
+
+Die Batch-Normalization ist eine Technik, die angewendet wird, um das Modelltraining zu stabilisieren. Dabei werden die Parameter gemäss ihres Batches normalisiert. Ein auftretendes Problem, dass damit behandelt werden möchte ist der "Internal Covariate Shift", welcher nach jeder Aktivierung auftritt. Dabei geht es um die Verteilung der Inputs für jeden Layer, die sich stark unterscheiden kann pro Layer. Mit der Batchnormalisierung möchte man dies umgehen und sozusagen immer eine ähnliche Verteilung/Skalierung der Daten als Input für den nächsten Layer eingeben. Die Konstante Änderung der Verteilung von jeden Aktivierungsschichten nennt man "Internal Covariate Shift."[(Vinod, 2020)](https://towardsdatascience.com/batch-normalisation-explained-5f4bd9de5feb)
+
+Durch die Batchnormierung wird das Modell stabilisiert und weniger anfällig auf "Vanishing Gradients" oder "Exploding Gradients". Vanishing Gradients treten bei grossen Neuronalen Netzen auf, bei dem der Fehler weit zurückpropagiert werden muss. Durch die häufige Anwendung von der Sigmoid-Funktion bspw. werden die Gradienten immer kleiner und verschwinden bevor der letzte Backprop-Layer erreicht wird [(Vinod, 2020)](https://towardsdatascience.com/batch-normalisation-explained-5f4bd9de5feb). 
+
+Bei den Exploding Gradients ist der Effekt umgekehrt. Dabei werden die Gradienten immer grösser bis sie schlussendlich unendlich gross werden.
+
+Die Batch-Normalisierung wird pro Batch vorgenommen. Die Formel zur Berechnung der Batch-Norm sieht wie folgt aus:
+
+$$\text{Batch-Norm} = \frac{X-\mu_{Batch}}{\sigma_{Batch}}$$
+
+Vorteile der Batch-Normalisierung:
+- Updates in den Layern werden unabhängig
+- Smoothing der Kostenfunktion -> Robusteres Training
+
+### Anwendung
 
 
 
@@ -239,3 +298,9 @@ http://cs231n.stanford.edu/slides/2017/cs231n_2017_lecture5.pdf
 https://towardsdatascience.com/illustrated-10-cnn-architectures-95d78ace614d#e971
 
 https://medium.com/analytics-vidhya/alexnet-a-simple-implementation-using-pytorch-30c14e8b6db2
+
+https://optuna.org/#paper
+
+https://jmlr.org/papers/volume15/srivastava14a/srivastava14a.pdf
+
+https://towardsdatascience.com/batch-normalisation-explained-5f4bd9de5feb
