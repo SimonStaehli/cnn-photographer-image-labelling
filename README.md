@@ -20,7 +20,7 @@ Der Ordner enthält alle relevanten Screnshots für die DOkumentation, welche al
 In diesem Ordner befinden sich alle Aufgaben aufgeteilt in einzelne NB zur besseren Übersicht.
 
 ### del_mc1_doc.md
-Dieses File enthält die niedergeschriebene Doku der Challenge
+Dieses File enthält die niedergeschriebene Doku der Challenge. Es wäre wünschenswert das Markdown lokal anzuschauen, denn auf Github werden per Latex integrierte Formeln nicht sauber angezeigt.
 
 ### networks.py
 Enthält verwendete Netzwerkarchitekturen, die eigens definiert wurden.
