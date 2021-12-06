@@ -318,23 +318,29 @@ Wie ich bereits einige Male vermutet habe, ist ein Modell mit einem hohen Bias s
 
 Bei Transfer-Learning geht es darum vortrainierte Neuronale Netze, die auf Millionen von Daten trainiert wurden (z.B. Imagenet) zu übernehmen und auf seinen Use-Case zu projizieren. Dies erreicht man zum Beispiel in dem man den letzten Layer, den Output-Layer, von dem vortrainierten Neuronalen Netz abschneidet und auf seinen eigenen Use-Case einen neuen Output-Layer einfügt, den man dann auf seinen eignen Datensatz trainiert [(Sarkar, 2018)](https://towardsdatascience.com/a-comprehensive-hands-on-guide-to-transfer-learning-with-real-world-applications-in-deep-learning-212bf3b2f27a).
 
+Für meine Anwendung verwende ich ein ResNet101(101-Konvolutionsschichten), das soweit ich weiss auf dem ImageNet Datensatz vortrainiert wurde. Dabei habe ich eine Accuracy von fast _45%_ und eine Precision von ca. _43%_ erreichen können, was um Längen besser ist als mein eigenes zusammengestelltes Netzwerk.
+
 ### Resultate
+
 
 | ![Transfer-Learning Opt History](src/s7_opt_history.png) | 
 |:--:| 
 | *Optimization History Transfer-Learning auf Trainings -und Testset* |
 
-
+Die Optimimierungshistorie des vortrainierten Netzwerks pendelt sich bei 10 Epochen bei einem Fehler von 2 ein. Ich denke, dies liegt vor allem daran, dass all die vorherigen Layer, die auf einem grösseren Datensatz trainiert wurden. Diese Layer wurden anfangs gefreezt und werden bei jedem Batch nicht mitangepasst. Parallel zum Loss auf dem Trainingset kann man auch den Loss auf dem Testset sehen, welcher mit fortschreitender Zahl der Epochen ebenfalls sinkt. Diese Zahlen sind mit Bedacht zu vergleichen, denn wir haben auf dem Trainingsdatensatz viel mehr Daten, die absolut summiert viel höhere Werte ergeben als auf dem Trainingsdatensatz. Mit der Anwendung von Transfer-Learning auf meinem Datensatz konnte ich viel bessere REsultate erzielen. 
 
 | ![Transfer-Learning Confusion Matrix](src/s7_conf_mat.png) | 
 |:--:| 
 | *Transfer-Learing Confusion-Matrix* |
 
+Das bessere Resultat ist auch an der Confusion-Matrix ersichtlich. Es befinden sich nun viel mehr Elemente auf der Diagonalen, als bei der vorherigen Matrix. Auch die Farbskalierung reicht nun bis höher als 70. Unser Modell hat auch bei denselben Labels Mühe Unterschiede festzustellen: _fashion, celebrities, people_. Auch bei den Landschaften sind Verwechslungen ersichtlich mit den Klassen: _nature, travel und aerial_. Klassifizierungen der Labels: _commerical, fine art, journalism_ sind für das Modell schwer zu machen. Ich denke jedoch, dass ein Mensch nicht viel besser performt hätte, aufgrund der grossen Menge der Überschneidungen der Klassen.
+Unterhalb stelle ich einige Bilder mit deren Vorhersagen dar:
 
 | ![Transfer-Learning Samples](src/s7_transferlearning_samples.png) | 
 |:--:| 
 | *Transfer-Learning Sample Predictions* |
 
+Hier kann man beispielsweise sehen, dass die Klassenzuteilung teilweise sehr ähnlich und die Vorhersagen theoretisch auch der Realität entsprechen könnten. Das Bild oben rechts hätte ich auch eher als Makro klassifiziert, da es eine Nahaufnahme von Libellen darstellt. Auch die Aufnahme ganz unten rechts wurde als Makro vorhergesagt, obwohl das Bild tatsächlich als Nature gelabelt ist. Aufgrund des verschwommenen Hintergrunds (Bokeh) könnte man hier theoretisch auch auf eine Makroaufnahme deuten. Da die Labels auf nutzerbasierter Interpretationen der Bildklasse basieren, denke ich, ist die Diskrepanz dieser Labels sehr gross. Weitere Beispiele in diesem Bild, welches auch bei der Confuson-Matrix ersichtlich war, war die schlechte Vorhersage von _fashion, celebrities, people_ (siehe unten links, 3. Reihe von oben ganz rechts). Diese Unterscheidungen wären auch für das Menschliche Auge nicht erkennbar.
 
 
 
