@@ -17,7 +17,7 @@ Die Datenqualität und die Ground Truth entspricht den vorhandenen Abstraktion d
 
 1. Bias durch das Labelling der Nutzer
 2. Bias durch sehr ähnlich aussehende Klassen. z.B. Celebrities und People
-3. Falsch gesetzte Labels
+3. Falsch gesetzte Labels von Nutzern
 
 Dies könnte in einem nächsten Schritt umgagngen werden, wenn zum Beispiel die Bildklasse Celebrity mit People kombiniert wird, da eine Unterscheidung selbst für das menschliche Auge schier unmöglich ist.
 
@@ -239,8 +239,13 @@ Für mein Netzwerk werde ich Dropout verwenden, um ein potentielles Overfitting 
 |:--:| 
 | *Effekt des Dropouts auf Kostenfunktion* |
 
-Der Plot zeigt die Entwicklung des Losses über Batches hinweg für verschiedene p-Werte, die als Hyperparameter für den Dropout beitrugen. Wie auch bei anderen Regularisierungstechniken kann man sehen, dass durch eine erhöhte Dropout-Wahrscheinlichkeit stärker regularisiert wird, sprich ein Overfitting vermieden auf den Testdaten vermieden wird. Desto höher der p-Wert, desto höher die Wahrscheinlichkeit, dass ein Neuron während einer Iteration ausgelassen wird. Ich denke ein Vorteil dabei ist es, dass nicht alle Neuronen in einer Iteration ein Update erhalten, wie anderen, was dazu führt, dass eine grössere Unabhängigkeit der einzelnen Updates zwischen Weights vorherrscht. In meinem jetzigen Beispiel würde gemäss dem Plot einen __P-Value von < 0.25__ für mein Modell einsetzen. Ich denke doch, dass in Bezug auf meinen Datensatz eine Regularisierung nicht stark verbessert.
+Der Plot zeigt die Entwicklung des Losses über Batches hinweg für verschiedene p-Werte, die als Hyperparameter für den Dropout beitrugen. Wie auch bei anderen Regularisierungstechniken kann man sehen, dass durch eine erhöhte Dropout-Wahrscheinlichkeit stärker regularisiert wird, sprich ein Overfitting vermieden auf den Testdaten vermieden wird. Desto höher der p-Wert, desto höher die Wahrscheinlichkeit, dass ein Neuron während einer Iteration ausgelassen wird. Ich denke ein Vorteil dabei ist es, dass nicht alle Neuronen in einer Iteration ein Update erhalten, wie anderen, was dazu führt, dass eine grössere Unabhängigkeit der einzelnen Updates zwischen Weights vorherrscht. In meinem jetzigen Beispiel würde gemäss dem Plot einen P-Value von < 0.25 für mein Modell einsetzen. Ich denke doch, dass in Bezug auf meinen Datensatz eine Regularisierung nicht stark verbessert.
 
+| ![Dropout Metrics](src/dropout_metrics.png) | 
+|:--:| 
+| *Berechnete Metriken mit Dropout* |
+
+Der Plot zeigt die Berechneten Metriken auf dem Trainings -und auf dem Testset. Man kann im linken Plot erkennen, dass mit einem steigenden P-Werte der Fit auf dem Traininigsdatensatz abnimmt und somit einen grösseren Bias auf dem Testset zulässt. Ein interessantes Ergebnis kann auf dem Testset beobachtet werden, denn da kann man sehen, dass z.B. trotz einem p von 0.25 die Resultate der Accuracy besser sind und Precision sogar fast identisch sind. Ich denke die Anwendung von einer Dropout Regularisierung von _p=.25_ könnte hier durchaus sinn ergeben. Interessant wäre es nun noch herauszufinden, 
 
 ## Batch-Normalisierung
 
@@ -254,11 +259,15 @@ Die Batch-Normalisierung wird pro Batch vorgenommen. Die Formel zur Berechnung d
 
 $$\text{Batch-Norm} = \frac{X-\mu_{Batch}}{\sigma_{Batch}}$$
 
+In der Formel stellt $X$ den Batch dar, $\mu_{Batch}$ den Mittelwert des Batches und $\sigma_{Batch}$ die Standardabweichung des Batches. Durch diese Formel werden die Weights des Batches durch das Abziehen des Mittelwerts zentriert und die Standardabweichung auf den Wert 1 reduziert, gemäss Standardnormalverteilung.
+
 Vorteile der Batch-Normalisierung:
 - Updates in den Layern werden unabhängig
 - Smoothing der Kostenfunktion -> Robusteres Training
 
 ### Anwendung
+
+
 
 
 
@@ -270,20 +279,21 @@ Den Vergleich der Optimizer überwache ich über den Lernprozess hinweg. Über d
 
 #### SGD
 
-Stochastic Gradient Descent nimmt über jeden Batch hinweg ein Random Sample mit welchem er dann die Gewichte updated. Dies hat den Vorteil, dass die Rechenintesität viel kleiner wird, zu mal bspw. nur ein Sample verarbeitet werden muss. Teilweise werden auch mehrere kleinere Samples genommen (Batches) [(Srinivasan, 2019)](https://towardsdatascience.com/stochastic-gradient-descent-clearly-explained-53d239905d31).
+Stochastic Gradient Descent nimmt über jeden Batch hinweg ein Random Sample mit welchem er dann die Gewichte updated. Dies hat den Vorteil, dass die Rechenintesität viel kleiner wird, zu mal bspw. nur ein Sample verarbeitet werden muss. Teilweise werden auch mehrere kleinere Samples genommen (Batches) [(Srinivasan, 2019)](https://towardsdatascience.com/stochastic-gradient-descent-clearly-explained-53d239905d31). Der Stochastic Gradient Descent macht frequentive Updates der Parameter mit einer hohen Variance, was in einer starken Fluktuation der Kostenfunktion resultiert [(Ruder, 2016)](https://ruder.io/optimizing-gradient-descent/index.html#stochasticgradientdescent). Es konnte gezeigt werden, dass SGD gegenüber Batched Gradient Descent, mit einer leichten Abnahme der Lernrate eine ähnliche Konvergenzverhalten zeigt, wie BGD [(Ruder, 2016)](https://ruder.io/optimizing-gradient-descent/index.html#stochasticgradientdescent). In meiner Anwendung verwende ich nicht direkt Stochastic Gradient Descent, sondern einen Mini-Batch Gradient Descent [(mariosasko, 2020)](https://discuss.pytorch.org/t/sgd-and-batch-size-in-data-dataloader/92912). Zusätzlich zum Gradient Descent verwende ich bei meinem Modell nach das Prinzip des Momentum, wo jeweils bei jedem Update der Gewichte durch den Gradienten mit einem Hyperparameter $\beta$ gesteuert werden kann, der kontrolliert wie stark gewichtet die vorherigen Gewichte Iteration dem Gewichtsupdate zugerechnet wird. 
 
+__???Wenn man sich den OPtimizer mit Momentum anschaut, dann muss man Momentum == Dampening setzen, dass der Effekt des Exponential Smoothings wirkt. Sonst rechnet man nur die vorherigen Gewichte mit den Gradienten auf. Ist dies sinnvoll?__ [Siehe hier](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html)
 
 #### Adam
 
-#### RMSprop
+Adam vereinigt in einem Optimizer die beiden Prinzipien des Momentums und des RMSProps [(Andrew Ng on Youtube, n.d.)](https://www.youtube.com/watch?v=JXQT_vxqwIs&t=100s&ab_channel=DeepLearningAI).
 
 ### Vergleich
 
-| ![space-1.jpg](src/optimizer_compared.png) | 
-|:--:| 
-| *Vergleich der Optimizer über Batches hinweg* |
 
 
+## Transfer-Learning
+
+Bei Transfer-Learning geht es darum vortrainierte Neuronale Netze, die auf Millionen von Daten trainiert wurden zu übernehmen und auf seinen Use-Case zu projizieren. Dies erreicht man in dem man den letzten Layer, den Output-Layer, von dem vortrainierten Neuronalen Netz abschneidet und auf seinen eigenen Use-Case einen neuen Output-Layer einfügt, den man dann auf seinen eignen Datensatz trainiert.
 
 
 
@@ -304,3 +314,9 @@ https://optuna.org/#paper
 https://jmlr.org/papers/volume15/srivastava14a/srivastava14a.pdf
 
 https://towardsdatascience.com/batch-normalisation-explained-5f4bd9de5feb
+
+https://ruder.io/optimizing-gradient-descent/index.html#shufflingandcurriculumlearning
+
+https://discuss.pytorch.org/t/sgd-and-batch-size-in-data-dataloader/92912
+
+https://www.youtube.com/watch?v=JXQT_vxqwIs&t=100s&ab_channel=DeepLearningAI
