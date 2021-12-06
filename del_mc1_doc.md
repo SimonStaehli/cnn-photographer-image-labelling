@@ -267,9 +267,20 @@ Vorteile der Batch-Normalisierung:
 
 ### Anwendung
 
+In der Anwendung vergleiche ich eine Implementierung zweier Netzwerke. Ein Netzwerk mit Implementierung der Batchnorm vor jedem Aktivierungslayer, sowohl bei den Konvolutionsschichten, als auch bei den MLP-Layern. Dieses Netzwerk vergleiche ich mit dem gleichen Netzwerk ohne die Batchnorm Layer.
+
+| ![Batchnorm loss](src/s5_batchnorm_loss.png) | 
+|:--:| 
+| *Vergleich Batchnorm Loss vs. Normal* |
+
+Die Plots zeigen die Entwicklung der Kosten über alle Batches hinweg mit einem Simple Moving Average von 50. Es wurde mit 10Fold Kreuzvalidierung den Mittelwert über jedes Netzwerks ermittelt. Um die Kurven schöner und flacher darstellen zu können. Beide Netzwerke wurden mit den gleichen Kostenfunktionen, Optimizer und Lernraten trainiert. Es ist ersichtlich, dass das Netzwerk mit der Batchnorm hinsichtlich des Fittens auf dem Trainingsdatensatzes schneller gegen ein Minimum konvergiert, als das Netzwerk ohne Batchnormlayer. Die Streuung der Batchnorm ist schwächer als die des Netzwerks ohne Batchnorm, was an den gestrichelten Linien ersichtlich ist. Es kann daraus geschlossen werden, dass das Training tatsächlich stabilisiert wird und zur Koonvergenz der Kostenfunktion beisteuert. Ein Smoothing trotz des SMA war jedoch nicht deutlich zu erkennen.
 
 
+| ![Batchnorm Metriken](src/s5_batchnorm_metrics.png) | 
+|:--:| 
+| *Vergleich Batchnorm Metriken Loss vs. Normal* |
 
+Auch hier zeigt sich ein ähnliches Bild, wie bei der Kostenfunktion. Auch hier wurde mit einer 10fachen Kreuzvalidierung gearbeitet. Durch die schnellere Konvergenz der Kostenfunktion wird auf dem Trainingset ein besseren Score erreicht hinsichtlich beider Metriken. Auch die Streuung ist kleiner, als bei dem Netzwerk ohne BN. Auf der rechten Seite kann man die berechneten Metriken auf dem Testset sehen. Aufgrund des besseren Fits auf dem Trainingset nehme ich an streuen hier die Resultate der Metriken stärker als beim anderen Netzwerk und resultiert somit in einem Low Bias High Variance, wobei ein Trade-off von beidem gefunden werden muss. Die Lagemasse sprich Median ist bei beiden Metriken besser als bei dem Netzwerk ohne BN. Ein Vergleich ist jedoch schwer, da mein Datensatz und die zugrundeliegende Ground Truth schwer unterscheidbar sind und dafür eher wenig Daten vorhanden sind.
 
 ### Vorhersagen
 
@@ -277,46 +288,95 @@ Vorteile der Batch-Normalisierung:
 
 Den Vergleich der Optimizer überwache ich über den Lernprozess hinweg. Über den Lernprozess kann man sehen, wie sich der Optimzer verhält über die einzelnen Batches verhält, sprich wie sich die Kostenfunktion mit steigender Iteration verändert. Bezüglich der Reproduzierbarkeit habe ich nach einer Epoch von SGD die Modellparameter abgespeichert, die ich nun als Ausgangspunkt für alle Optimizer verwende. Ausserdem verwende ich für den Vergleich die gleiche Anzahl der Epochen, nämlich 10. Es ist hier zu erwähnen, dass ein Vergleich schwer fällt, da die Optimizer verschiedene Parameter verfügen z.B. Lernrate und Momentum bei SGD, die man ebenfalls berücksichtigen muss beim Training. Dies werde ich jedoch im Prozess nicht stark berücksichtigen. Ich habe für meinen Teil einige Durchläufe gemacht und geschaut wie sich die laufenden Kosten verändern. Zu schwache Veränderungen habe ich mit einer Erhöhung der Kostenfunktion gegensteuert.
 
-#### SGD
-
-Stochastic Gradient Descent nimmt über jeden Batch hinweg ein Random Sample mit welchem er dann die Gewichte updated. Dies hat den Vorteil, dass die Rechenintesität viel kleiner wird, zu mal bspw. nur ein Sample verarbeitet werden muss. Teilweise werden auch mehrere kleinere Samples genommen (Batches) [(Srinivasan, 2019)](https://towardsdatascience.com/stochastic-gradient-descent-clearly-explained-53d239905d31). Der Stochastic Gradient Descent macht frequentive Updates der Parameter mit einer hohen Variance, was in einer starken Fluktuation der Kostenfunktion resultiert [(Ruder, 2016)](https://ruder.io/optimizing-gradient-descent/index.html#stochasticgradientdescent). Es konnte gezeigt werden, dass SGD gegenüber Batched Gradient Descent, mit einer leichten Abnahme der Lernrate eine ähnliche Konvergenzverhalten zeigt, wie BGD [(Ruder, 2016)](https://ruder.io/optimizing-gradient-descent/index.html#stochasticgradientdescent). In meiner Anwendung verwende ich nicht direkt Stochastic Gradient Descent, sondern einen Mini-Batch Gradient Descent [(mariosasko, 2020)](https://discuss.pytorch.org/t/sgd-and-batch-size-in-data-dataloader/92912). Zusätzlich zum Gradient Descent verwende ich bei meinem Modell nach das Prinzip des Momentum, wo jeweils bei jedem Update der Gewichte durch den Gradienten mit einem Hyperparameter $\beta$ gesteuert werden kann, der kontrolliert wie stark gewichtet die vorherigen Gewichte Iteration dem Gewichtsupdate zugerechnet wird. 
+Stochastic Gradient Descent nimmt über jeden Batch hinweg ein Random Sample mit welchem er dann die Gewichte updated. Dies hat den Vorteil, dass die Rechenintesität viel kleiner wird, zu mal bspw. nur ein Sample verarbeitet werden muss. Teilweise werden auch mehrere kleinere Samples genommen (Batches) [(Srinivasan, 2019)](https://towardsdatascience.com/stochastic-gradient-descent-clearly-explained-53d239905d31). Der Stochastic Gradient Descent macht frequentive Updates der Parameter mit einer hohen Variance, was in einer starken Fluktuation der Kostenfunktion resultiert [(Ruder, 2016)](https://ruder.io/optimizing-gradient-descent/index.html#stochasticgradientdescent). Es konnte gezeigt werden, dass SGD gegenüber Batched Gradient Descent, mit einer leichten Abnahme der Lernrate eine ähnliche Konvergenzverhalten zeigt, wie BGD [(Ruder, 2016)](https://ruder.io/optimizing-gradient-descent/index.html#stochasticgradientdescent). In meiner Anwendung verwende ich nicht direkt Stochastic Gradient Descent, sondern einen Mini-Batch Gradient Descent [(mariosasko, 2020)](https://discuss.pytorch.org/t/sgd-and-batch-size-in-data-dataloader/92912). Zusätzlich zum Gradient Descent verwende ich bei meinem Modell nach das Prinzip des Momentum, wo jeweils bei jedem Update der Gewichte durch den Gradienten mit einem Hyperparameter $\beta$ gesteuert werden kann, der kontrolliert wie stark gewichtet die vorherigen Gewichte Iteration dem Gewichtsupdate zugerechnet wird. Der Adam (Adaptive Moment Estimation) verwendet ebenfalls die Prinzipien des Momentums und vereinigt sie mit dem RMSProp [(Andrew Ng on Youtube, n.d.)](https://www.youtube.com/watch?v=JXQT_vxqwIs&t=100s&ab_channel=DeepLearningAI).
 
 __???Wenn man sich den OPtimizer mit Momentum anschaut, dann muss man Momentum == Dampening setzen, dass der Effekt des Exponential Smoothings wirkt. Sonst rechnet man nur die vorherigen Gewichte mit den Gradienten auf. Ist dies sinnvoll?__ [Siehe hier](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html)
 
-#### Adam
-
-Adam vereinigt in einem Optimizer die beiden Prinzipien des Momentums und des RMSProps [(Andrew Ng on Youtube, n.d.)](https://www.youtube.com/watch?v=JXQT_vxqwIs&t=100s&ab_channel=DeepLearningAI).
-
 ### Vergleich
 
+| ![Optimizer Loss](src/s6_optimizer_loss.png) | 
+|:--:| 
+| *Vergleich Optimizer loss* |
+
+Was diesen beiden Plots direkt auffällt, wenn man sie vergleicht: Die erste Parameterschätzung unterscheidet sich bei beiden Optimizer. Dies ist, weil ich sie nicht gleich initialisiert habe. Dies ist natürlich nicht von Vorteil, denn mit der anderen Parameterinitialisierung landen könnten sie komplett in einem anderen Bereich der Hyperebene landen, was ein Vergleich nicht sonderlich attraktiv macht. Aufgrund von Zeitgründen habe ich jedoch davon abgesehen. Ich denke durch die Kreuzvalidierung wird ein grösser Raum der Initalisierungsparameter abgdeckt, welcher grundsätzlich nicht stark voneinander abweichen sollte, da gleiche Parameterinitialisierungstrategie verwendet werden.
+Die beiden Plots zeigen die Optimierungshistorie der Kostenfunktion mit $\pm \sigma$. Die Kurven wurden beide über 5 Folds mit je 40 Epochen ermittelt. Der Plot zeigt den SMA über 50 Batches, um die Kurve besser interpretierbar zu machen. Die Kurve von SGD fällt konstanter ab, als die Kurve von Adam. Ausserdem verhält sich die Streuung der Batches in einem anderen Bereich pro Plot. Grunsätzlich kann man aus dem Plot schlussfolgern, dass Batchnorm für das Modelltraining durchaus mehr Stabilität bringt und in einer schnelleren Konvergenz gegen ein Minima endet.
+
+Beide Kurven enden auf einem unterschiedlichen Niveau. Im nachfolgenden Plot sieht man, wie sich dieses Niveau die Vorhersagen der unterschiedlichen Modelle beeinträchtigt.
+
+| ![Optimizer Metriken](src/s6_optimizer_metrics.png) | 
+|:--:| 
+| *Vergleich Optimizer Metriken* |
+
+Wie ich bereits einige Male vermutet habe, ist ein Modell mit einem hohen Bias stärker auf den Vorhersagen auf meinem Testset. Hier kann man sehen, dass durch das Fitten von einem Optimizer das Trainingsset besser gefittet wird, doch schlechter auf dem Testset performt (Low Bias, High Variance) und der umgekehrte Fall bei dem Adam Optimizer. Man muss jedoch bedenken, dass beide Optimierungsstrategien über unterschiedliche Hyperparameter und auch Parameterinitalisierungen hatten deshalb diese Grafik mit Bedacht angeschaut werden sollte. Auch hier wurde mit einer 5-fachen Kreuzvalidierung gerarbeitet, was in 80-20 Trainings -und Testsplits resultierte in jeder Iteration.
 
 
 ## Transfer-Learning
 
-Bei Transfer-Learning geht es darum vortrainierte Neuronale Netze, die auf Millionen von Daten trainiert wurden zu übernehmen und auf seinen Use-Case zu projizieren. Dies erreicht man in dem man den letzten Layer, den Output-Layer, von dem vortrainierten Neuronalen Netz abschneidet und auf seinen eigenen Use-Case einen neuen Output-Layer einfügt, den man dann auf seinen eignen Datensatz trainiert.
+| ![Transfer-Learning](src/transferlearning.png) | 
+|:--:| 
+| *Vergleich Optimizer Metriken (Quelle: A Comprehensive Hands-on Guide to Transfer Learning with Real-World Applications in Deep Learning on Medium, Sarkar, 2018)* |
+
+Bei Transfer-Learning geht es darum vortrainierte Neuronale Netze, die auf Millionen von Daten trainiert wurden (z.B. Imagenet) zu übernehmen und auf seinen Use-Case zu projizieren. Dies erreicht man zum Beispiel in dem man den letzten Layer, den Output-Layer, von dem vortrainierten Neuronalen Netz abschneidet und auf seinen eigenen Use-Case einen neuen Output-Layer einfügt, den man dann auf seinen eignen Datensatz trainiert [(Sarkar, 2018)](https://towardsdatascience.com/a-comprehensive-hands-on-guide-to-transfer-learning-with-real-world-applications-in-deep-learning-212bf3b2f27a).
+
+### Resultate
+
+| ![Transfer-Learning Opt History](src/s7_opt_history.png) | 
+|:--:| 
+| *Optimization History Transfer-Learning auf Trainings -und Testset* |
 
 
+
+| ![Transfer-Learning Confusion Matrix](src/s7_conf_mat.png) | 
+|:--:| 
+| *Transfer-Learing Confusion-Matrix* |
+
+
+| ![Transfer-Learning Samples](src/s7_transferlearning_samples.png) | 
+|:--:| 
+| *Transfer-Learning Sample Predictions* |
+
+
+
+
+## Schlusswort
+
+In meiner Arbeit habe ich festgestellt, dass ich mit dem AlexNet bereits ein sehr grosses Neuronales Netz implementiert hatte, was mir jeweils viel Ressourcen und Zeit kostete zu trainineren. Dennoch war es interessant zu sehen, wie sich die Zielgrössen verändern, wenn man die einzelnen Parameter des Netzwerks variiert, wie beispielsweise die Tiefe und die Weite des Netzwerks. Letzenendes konnte ich durch Transfer-Learning einen starken Boost für mein Netzwerk rausholen, welches bereits auf sehr vielen Bildern vortrainiert war. Dieses Netzwerk ist ein viel tieferes Netzwerk, als das jenige, welches von mir implementiert wurde und auch beim Hyperparameter-Tuning mit einer geringeren Netzwerktiefe in besseren Resulateten resultierte.
+Ausserdem habe ich erst am Ende festgestellt, dass ich für meine Vorhersagen während dem Tranineren des NN nur immer die Hardmax-Funktion auf dem Logit Output des letzten Aktivierungslayers anstatt dem Log-Softmax Output angewendet habe. Ein weiterer Punkt welchen ich nicht implementiert habe wäre ein Validation Loop, welchen ich dann hätte gegenüberstellen können mit dem Loss des Trainings und auch die Definitionen des SGD-Optimizers mit Momentum mit den beiden Parametern Momentum und Dampening habe ich auch erst am Schluss durchschaut.
 
 # Quellen
 
-https://towardsdatascience.com/stochastic-gradient-descent-clearly-explained-53d239905d31
+Akiba, T., Sano, S., Yanase, T., Ohta, T., & Koyama, M. (2019). Optuna: A Next-generation Hyperparameter Optimization Framework. Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining, 2623–2631. https://doi.org/10.1145/3292500.3330701
 
-https://www.upgrad.com/blog/basic-cnn-architecture/
+Aremu, T. (2021, August 26). AlexNet: A simple implementation using Pytorch. Analytics Vidhya. https://medium.com/analytics-vidhya/alexnet-a-simple-implementation-using-pytorch-30c14e8b6db2
 
-http://cs231n.stanford.edu/slides/2017/cs231n_2017_lecture5.pdf
+DeepLearningAI. (2017, August 25). Adam Optimization Algorithm (C2W2L08). https://www.youtube.com/watch?v=JXQT_vxqwIs
 
-https://towardsdatascience.com/illustrated-10-cnn-architectures-95d78ace614d#e971
+Gurucharan. (2020, Dezember 7). Basic CNN Architecture: Explaining 5 Layers of Convolutional Neural Network. UpGrad Blog. https://www.upgrad.com/blog/basic-cnn-architecture/
 
-https://medium.com/analytics-vidhya/alexnet-a-simple-implementation-using-pytorch-30c14e8b6db2
+Karim, R. (2021, November 29). Illustrated: 10 CNN Architectures. Medium. https://towardsdatascience.com/illustrated-10-cnn-architectures-95d78ace614d
 
-https://optuna.org/#paper
+Li et al. - Lecture 5 Convolutional Neural Networks.pdf. (o. J.). Abgerufen 6. Dezember 2021, von http://cs231n.stanford.edu/slides/2017/cs231n_2017_lecture5.pdf
 
-https://jmlr.org/papers/volume15/srivastava14a/srivastava14a.pdf
+Li, F.-F., Johnson, J., & Yeung, S. (o. J.). Lecture 5: Convolutional Neural Networks. 78.
+Ruder, S. (2016, Januar 19). An overview of gradient descent optimization algorithms. Sebastian Ruder. https://ruder.io/optimizing-gradient-descent/
 
-https://towardsdatascience.com/batch-normalisation-explained-5f4bd9de5feb
+Sarkar, D. (DJ). (2018, November 17). A Comprehensive Hands-on Guide to Transfer Learning with Real-World Applications in Deep Learning. Medium. https://towardsdatascience.com/a-comprehensive-hands-on-guide-to-transfer-learning-with-real-world-applications-in-deep-learning-212bf3b2f27a
 
-https://ruder.io/optimizing-gradient-descent/index.html#shufflingandcurriculumlearning
+SGD and batch_size in data.DataLoader(). (2020, August 15). PyTorch Forums. https://discuss.pytorch.org/t/sgd-and-batch-size-in-data-dataloader/92912
 
-https://discuss.pytorch.org/t/sgd-and-batch-size-in-data-dataloader/92912
+Srinivasan, A. V. (2019, September 7). Stochastic Gradient Descent—Clearly Explained !! Medium. https://towardsdatascience.com/stochastic-gradient-descent-clearly-explained-53d239905d31
 
-https://www.youtube.com/watch?v=JXQT_vxqwIs&t=100s&ab_channel=DeepLearningAI
+Srivastava et al. - Dropout A Simple Way to Prevent Neural Networks f.pdf. (o. J.). Abgerufen 6. Dezember 2021, von https://jmlr.org/papers/volume15/srivastava14a/srivastava14a.pdf
+
+Srivastava, N., Hinton, G., Krizhevsky, A., Sutskever, I., & Salakhutdinov, R. (o. J.). Dropout: A Simple Way to Prevent Neural Networks from Overﬁtting. 30.
+Vinod, R. (2020, Mai 12). Batch Normalisation Explained. Medium. https://towardsdatascience.com/batch-normalisation-explained-5f4bd9de5feb
+
+
+
+
+
+
+
+
+
+
