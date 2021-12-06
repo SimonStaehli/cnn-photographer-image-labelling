@@ -1,5 +1,5 @@
 import seaborn as sns
-from helper import *
+from program.helper import *
 import torch
 from torchvision.datasets import ImageFolder
 import torch.nn as nn
@@ -15,44 +15,44 @@ def print_total_params(model):
     print(50 * '=')
 
 
-def train_network(model, criterion, optimizer, n_epochs, dataloader_train):
+def train_network(model, criterion, optimizer, n_epochs, dataloader_train, 
+                  dataloader_test=None):
     """
     Trains a neural Network with given inputs and parameters.
-
+    
     params:
     ---------
-    model:
-        Neural Network class Pytorch
-    criterion:
+    model: 
+        Neural Network class Pytorch     
+    criterion: 
         Cost-Function used for the network optimizatio
-    optimizer:
+    optimizer: 
         Optmizer for the network
-    n_epochs:
+    n_epochs: 
         Defines how many times the whole dateset should be fed through the network
-    dataloader_train:
+    dataloader_train: 
         Dataloader with the batched dataset
-    epsilon: int
-        Stop criterion for Running Loss. If this param should be taken into
-        account then n_epochs needs to be set higher
-
+    dataloader_test:
+        Dataloader test with the batched dataset used for test loop. If None -> No eval loop
+        
     returns:
     ----------
     model:
         trained model
     losses:
-        Losses over each iteration
+        Losses over each iteration  
     accuracy:
         Accuracy score on trainset at acc_at_iter iteration
     """
     y_pred, y_true = torch.Tensor(), torch.Tensor()
-    losses, accuracy = [], {}
+    train_losses, eval_losses = [], []
     dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model.to(dev)
     criterion.to(dev)
 
     model.train()
     train_acc = 0
-    overall_length = np.sum([len(batch) for batch in dataloader_train])
+    overall_length = len(dataloader_train)
     with tqdm(total=n_epochs*overall_length) as pbar:
         for epoch in range(n_epochs):  # loop over the dataset multiple times
             running_loss = 0.0
@@ -69,25 +69,33 @@ def train_network(model, criterion, optimizer, n_epochs, dataloader_train):
                 loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
-
+                                    
                 # calc and print stats
-                losses.append(loss.item())
-                running_loss += loss.item()
-                y_pred = torch.cat((y_pred, outputs.max(dim=1).indices.cpu()))
-                y_true = torch.cat((y_true, labels.cpu()))
-                pbar.set_description(
-                    f'Epoch: {epoch + 1}/{n_epochs} // Running Loss: {np.round(running_loss, 3)} // Accuracy: {train_acc} '
-                )
+                train_losses.append(loss.item())
+                running_loss += loss.item()                
+                
+                pbar.set_description(f'Epoch: {epoch+1}/{n_epochs} // Running Loss: {np.round(running_loss, 3)} ')
                 pbar.update(1)
-                train_acc = torch.sum(y_pred == y_true) / y_true.shape[0]
-                train_acc = np.round(train_acc.item(), 3)
-                accuracy[len(y_pred)] = train_acc
+                
+            if dataloader_test:
+                length_dataloader_test = len(dataloader_test)
+                for i, data in enumerate(dataloader_test):
+                    pbar.set_description(f'Epoch: {epoch+1}/{n_epochs} // Eval-Loop: {i+1}/{length_dataloader_test}')
+                    model.eval()
+                    # get the inputs; data is a list of [inputs, labels]
+                    inputs, labels = data
+                    inputs, labels = inputs.to(dev), labels.to(dev)
+                    # forward + backward + optimize
+                    outputs = model(inputs)
+                    eval_loss = criterion(outputs, labels)
+                    eval_losses.append(eval_loss.item())
+                    model.train()
+                            
+    return model, dict(train=train_losses, test=eval_losses)
 
-    return model, losses, accuracy
 
 
-
-def predict_on_testset(model, dataloader_test):
+def network_predict(model, dataloader):
     """
     Returns true and predicted labels for prediction
 
@@ -95,7 +103,7 @@ def predict_on_testset(model, dataloader_test):
     ---------
     model:
         Pytorch Neuronal Net
-    dataloader_test:
+    dataloader:
         batched Testset
 
     returns:
@@ -112,7 +120,7 @@ def predict_on_testset(model, dataloader_test):
     with torch.no_grad():
         y_pred = []
         y_true = []
-        for batch in tqdm(dataloader_test, desc='Calculate Acc. on Test Data'):
+        for batch in tqdm(dataloader, desc='Calculate Acc. on Test Data'):
             images, labels = batch
             images, labels = images.to(dev), labels.to(dev)
             outputs = model(images)
